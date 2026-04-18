@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { Hands } from "@mediapipe/hands";
 import { Camera } from "@mediapipe/camera_utils";
 
-const PARTICLE_COUNT = 6000;
+const PARTICLE_COUNT = 3000;
 const FIELD_RADIUS = 4;
 
 /* ═══════════════════════════════════════════════════════════════
