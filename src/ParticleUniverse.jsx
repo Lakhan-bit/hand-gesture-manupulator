@@ -31,7 +31,10 @@ function getGestureState(landmarks) {
   const pnkE = isExt(pinkyTip, pinkyMcp);
   const extCount = [idxE, midE, rngE, pnkE].filter(Boolean).length;
 
-  const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+  const pinchDist = Math.hypot(
+    thumbTip.x - indexTip.x,
+    thumbTip.y - indexTip.y,
+  );
   const palmX = (wrist.x + indexMcp.x + middleMcp.x) / 3;
   const palmY = (wrist.y + indexMcp.y + middleMcp.y) / 3;
   const spreadDist =
@@ -48,7 +51,8 @@ function getGestureState(landmarks) {
   if (idxE && !midE && !rngE && pnkE) return { type: "chaos", palmX, palmY };
 
   // 4. Explode (wide open hand)
-  if (extCount >= 4 && spreadDist > 0.4) return { type: "explode", palmX, palmY };
+  if (extCount >= 4 && spreadDist > 0.4)
+    return { type: "explode", palmX, palmY };
 
   // 5. Peace / Twist → index + middle only
   if (idxE && midE && !rngE && !pnkE) return { type: "twist", palmX, palmY };
@@ -71,15 +75,16 @@ export default function ParticleUniverse() {
   const videoRef = useRef(null);
 
   // --- Core refs for high-frequency physics (no React re-renders) ---
-  const gestureRef = useRef({ type: "none" });           // raw from MediaPipe
-  const historyRef = useRef([]);                           // last N detections
-  const confirmedRef = useRef({                           // debounced + smoothed
+  const gestureRef = useRef({ type: "none" }); // raw from MediaPipe
+  const historyRef = useRef([]); // last N detections
+  const confirmedRef = useRef({
+    // debounced + smoothed
     type: "none",
     palmX: 0.5,
     palmY: 0.5,
-    progress: 0,                                          // 0→1 transition ramp
+    progress: 0, // 0→1 transition ramp
   });
-  const smoothedHandRef = useRef({ x: 0.5, y: 0.5 });     // lerped palm coords
+  const smoothedHandRef = useRef({ x: 0.5, y: 0.5 }); // lerped palm coords
 
   // --- React state (throttled, low-frequency) ---
   const [camReady, setCamReady] = useState(false);
@@ -94,27 +99,34 @@ export default function ParticleUniverse() {
   const lastUiUpdateRef = useRef(0);
 
   const gestureMeta = {
-    none:    { label: "NO HANDS",  color: "#888888" },
-    idle:    { label: "• IDLE",    color: "#aaffaa" },
+    none: { label: "NO HANDS", color: "#888888" },
+    idle: { label: "• IDLE", color: "#aaffaa" },
     attract: { label: "✦ ATTRACT", color: "#00f5ff" },
-    push:    { label: "↑ PUSH",    color: "#ff6b6b" },
+    push: { label: "↑ PUSH", color: "#ff6b6b" },
     explode: { label: "✸ EXPLODE", color: "#ffd700" },
-    pinch:   { label: "⊙ VORTEX",  color: "#bf5fff" },
-    fist:    { label: "◉ CALM",    color: "#ff5555" },
-    twist:   { label: "↻ TWIST",   color: "#00ffaa" },
-    chaos:   { label: "⚡ CHAOS",  color: "#ff00aa" },
+    pinch: { label: "⊙ VORTEX", color: "#bf5fff" },
+    fist: { label: "◉ CALM", color: "#ff5555" },
+    twist: { label: "↻ TWIST", color: "#00ffaa" },
+    chaos: { label: "⚡ CHAOS", color: "#ff00aa" },
   };
 
   useEffect(() => {
     const W = window.innerWidth;
     const H = window.innerHeight;
 
+    // COPY THE REF HERE
+    const mountNode = mountRef.current;
+    if (!mountNode) return;
+
     /* ── Renderer ─────────────────────────────────────────── */
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: "high-performance",
+    });
     renderer.setSize(W, H);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 1);
-    mountRef.current.appendChild(renderer.domElement);
+    mountNode.appendChild(renderer.domElement); // use the copied variable
 
     /* ── Scene / Camera ───────────────────────────────────── */
     const scene = new THREE.Scene();
@@ -178,7 +190,11 @@ export default function ParticleUniverse() {
 
     // Debug sphere (shows smoothed hand position)
     const debugGeo = new THREE.SphereGeometry(0.12, 16, 16);
-    const debugMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
+    const debugMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.4,
+    });
     const debugSphere = new THREE.Mesh(debugGeo, debugMat);
     scene.add(debugSphere);
 
@@ -205,8 +221,10 @@ export default function ParticleUniverse() {
 
       // Smooth hand position (always track, even if gesture is idle)
       if (hasRawHand) {
-        smoothedHandRef.current.x += (raw.palmX - smoothedHandRef.current.x) * 0.12;
-        smoothedHandRef.current.y += (raw.palmY - smoothedHandRef.current.y) * 0.12;
+        smoothedHandRef.current.x +=
+          (raw.palmX - smoothedHandRef.current.x) * 0.12;
+        smoothedHandRef.current.y +=
+          (raw.palmY - smoothedHandRef.current.y) * 0.12;
       }
 
       // Debounce gesture type via history buffer
@@ -345,9 +363,16 @@ export default function ParticleUniverse() {
               // Perlin-ish noise turbulence
               const f = 0.25 * intensity;
               const s = 2.2;
-              ax += Math.sin(pos[iy] * s + t * 3.2) * Math.cos(pos[iz] * s - t) * f;
-              ay += Math.cos(pos[ix] * s - t * 2.8) * Math.sin(pos[iz] * s + t * 1.2) * f;
-              az += Math.sin(pos[ix] * s + t * 2.1) * Math.cos(pos[iy] * s - t * 1.5) * f;
+              ax +=
+                Math.sin(pos[iy] * s + t * 3.2) * Math.cos(pos[iz] * s - t) * f;
+              ay +=
+                Math.cos(pos[ix] * s - t * 2.8) *
+                Math.sin(pos[iz] * s + t * 1.2) *
+                f;
+              az +=
+                Math.sin(pos[ix] * s + t * 2.1) *
+                Math.cos(pos[iy] * s - t * 1.5) *
+                f;
               break;
             }
             case "fist": {
@@ -399,7 +424,11 @@ export default function ParticleUniverse() {
 
         // Dynamic colour based on speed + time
         const spd = Math.sqrt(vel[ix] ** 2 + vel[iy] ** 2 + vel[iz] ** 2);
-        const hue = (i / PARTICLE_COUNT + t * 0.05 + (confirmed.type === "chaos" ? spd * 0.3 : 0)) % 1;
+        const hue =
+          (i / PARTICLE_COUNT +
+            t * 0.05 +
+            (confirmed.type === "chaos" ? spd * 0.3 : 0)) %
+          1;
         const lit = Math.min(0.5 + spd * 5, 0.95);
         const sat = Math.min(0.75 + spd * 3.5, 1.0);
         _color.setHSL(hue, sat, lit);
@@ -417,7 +446,8 @@ export default function ParticleUniverse() {
 
     /* ── MediaPipe Hands ──────────────────────────────────── */
     const hands = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+      locateFile: (file) =>
+        `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
     });
     hands.setOptions({
       maxNumHands: 2,
@@ -479,8 +509,10 @@ export default function ParticleUniverse() {
       cancelAnimationFrame(frameId);
       cam.stop();
       window.removeEventListener("resize", onResize);
-      if (mountRef.current && renderer.domElement) {
-        mountRef.current.removeChild(renderer.domElement);
+
+      // Use the captured variable, not mountRef.current
+      if (mountNode && renderer.domElement) {
+        mountNode.removeChild(renderer.domElement);
       }
       renderer.dispose();
       geo.dispose();
@@ -573,7 +605,8 @@ export default function ParticleUniverse() {
               padding: "6px 16px",
               border: `1px solid ${uiGesture.type !== "none" ? currentColor + "55" : "rgba(255,255,255,0.08)"}`,
               borderRadius: 100,
-              background: uiGesture.type !== "none" ? currentColor + "14" : "transparent",
+              background:
+                uiGesture.type !== "none" ? currentColor + "14" : "transparent",
               transition: "all 0.35s cubic-bezier(0.4,0,0.2,1)",
               backdropFilter: "blur(4px)",
             }}
@@ -583,8 +616,14 @@ export default function ParticleUniverse() {
                 width: 8,
                 height: 8,
                 borderRadius: "50%",
-                background: uiGesture.type !== "none" ? currentColor : "rgba(255,255,255,0.15)",
-                boxShadow: uiGesture.type !== "none" ? `0 0 10px ${currentColor}aa` : "none",
+                background:
+                  uiGesture.type !== "none"
+                    ? currentColor
+                    : "rgba(255,255,255,0.15)",
+                boxShadow:
+                  uiGesture.type !== "none"
+                    ? `0 0 10px ${currentColor}aa`
+                    : "none",
                 transition: "all 0.35s ease",
               }}
             />
@@ -592,7 +631,10 @@ export default function ParticleUniverse() {
               style={{
                 fontSize: 11,
                 letterSpacing: "0.2em",
-                color: uiGesture.type !== "none" ? currentColor : "rgba(255,255,255,0.25)",
+                color:
+                  uiGesture.type !== "none"
+                    ? currentColor
+                    : "rgba(255,255,255,0.25)",
                 transition: "color 0.35s ease",
                 minWidth: 100,
                 textAlign: "center",
@@ -652,7 +694,9 @@ export default function ParticleUniverse() {
               background: "rgba(0,0,0,0.55)",
               backdropFilter: "blur(6px)",
               opacity: uiGesture.label.includes(label) ? 1 : 0.45,
-              transform: uiGesture.label.includes(label) ? "scale(1.05)" : "scale(1)",
+              transform: uiGesture.label.includes(label)
+                ? "scale(1.05)"
+                : "scale(1)",
               transition: "all 0.3s ease",
             }}
           >
@@ -669,7 +713,9 @@ export default function ParticleUniverse() {
             <div
               style={{
                 fontSize: 9,
-                color: uiGesture.label.includes(label) ? color : "rgba(255,255,255,0.5)",
+                color: uiGesture.label.includes(label)
+                  ? color
+                  : "rgba(255,255,255,0.5)",
                 letterSpacing: "0.12em",
                 transition: "color 0.3s ease",
               }}
